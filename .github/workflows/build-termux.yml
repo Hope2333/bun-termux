@@ -1,16 +1,16 @@
 # GitHub Actions Workflow: Build Termux Packages
 #
-# Builds deb packages for Bun and OpenCode on Termux (arm64 only)
+# Builds both DEB and PACMAN packages for Bun and OpenCode on Termux (arm64 only)
 #
 # Triggers:
-#   - Push to main/master
+#   - Push to main/master/termux-packaging-v2
 #   - Pull requests
 #   - Manual dispatch with version override
 #   - Release tags
 #
 # Outputs:
-#   - bun-termux-{ver}_{arch}.deb
-#   - opencode-termux-{ver}_{arch}.deb
+#   DEB: bun-termux-{ver}_{arch}.deb, opencode-termux-{ver}_{arch}.deb
+#   PACMAN: bun-termux-{ver}-{rel}-aarch64.pkg.tar.xz, opencode-termux-{ver}-{rel}-aarch64.pkg.tar.xz
 
 name: Build Termux Packages
 
@@ -42,14 +42,29 @@ on:
         options:
           - aarch64
           # Note: armv7 NOT supported - see docs/arm32-limitations.md
+      package_format:
+        description: 'Package format'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - deb
+          - pacman
 
 env:
   BUN_VERSION: ${{ github.event.inputs.bun_version || '1.2.20' }}
   OPENCODE_VERSION: ${{ github.event.inputs.opencode_version || '1.1.65' }}
   ARCHITECTURE: ${{ github.event.inputs.architecture || 'aarch64' }}
+  PACKAGE_FORMAT: ${{ github.event.inputs.package_format || 'both' }}
+  PKGREL: '1'
 
 jobs:
-  build-bun:
+  # ============================================
+  # BUN PACKAGES
+  # ============================================
+  build-bun-deb:
+    if: ${{ github.event.inputs.package_format == 'deb' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/termux/package-builder:latest
@@ -60,7 +75,7 @@ jobs:
       - name: Setup build environment
         run: |
           apt-get update || true
-          apt-get install -y curl unzip rsync || true
+          apt-get install -y curl unzip rsync dpkg-dev || true
           uname -a
 
       - name: Download Bun binary
@@ -68,17 +83,15 @@ jobs:
           mkdir -p bun-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/bin
           mkdir -p bun-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux
           
-          # Download Bun for aarch64
           BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${{ env.BUN_VERSION }}/bun-linux-aarch64.zip"
+          echo "Downloading: $BUN_URL"
           curl -L -o /tmp/bun.zip "$BUN_URL"
           unzip -o /tmp/bun.zip -d /tmp/bun-extract
           
-          # Find and copy the binary
           BUN_BIN=$(find /tmp/bun-extract -name "bun" -type f | head -1)
           cp "$BUN_BIN" bun-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux/bun
           chmod +x bun-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux/bun
           
-          # Create wrapper script
           cat > bun-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/bin/bun << 'EOF'
           #!/data/data/com.termux/files/usr/bin/bash
           set -euo pipefail
@@ -87,26 +100,26 @@ jobs:
           EOF
           chmod +x bun-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/bin/bun
           
-          echo "Bun binary downloaded and staged"
+          echo "✅ Bun binary downloaded and staged"
 
       - name: Build Bun DEB package
         run: |
           mkdir -p packages
           ARCHITECTURE=${{ env.ARCHITECTURE }} bash scripts/package/package_deb.sh bun bun-termux ${{ env.BUN_VERSION }} ${{ env.ARCHITECTURE }}
           chmod 755 packages/bun-termux/DEBIAN || true
-          dpkg-deb --build packages/bun-termux packages/bun-termux_${{ env.BUN_VERSION }}_${{ env.ARCHITECTURE }}.deb || true
-          ls -la packages/*.deb || echo "Package build completed"
+          dpkg-deb --build packages/bun-termux packages/bun-termux_${{ env.BUN_VERSION }}_${{ env.ARCHITECTURE }}.deb
+          ls -lh packages/*.deb
 
-      - name: Upload Bun artifact
+      - name: Upload Bun DEB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bun-termux-${{ env.ARCHITECTURE }}
+          name: bun-termux-deb-${{ env.ARCHITECTURE }}
           path: packages/*.deb
           retention-days: 30
 
-  build-opencode:
+  build-bun-pacman:
+    if: ${{ github.event.inputs.package_format == 'pacman' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
     runs-on: ubuntu-latest
-    needs: build-bun
     container:
       image: ghcr.io/termux/package-builder:latest
     steps:
@@ -116,7 +129,89 @@ jobs:
       - name: Setup build environment
         run: |
           apt-get update || true
-          apt-get install -y curl rsync || true
+          apt-get install -y curl unzip rsync xz-utils || true
+          uname -a
+
+      - name: Download Bun binary
+        run: |
+          mkdir -p bun-termux/runtime
+          BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${{ env.BUN_VERSION }}/bun-linux-aarch64.zip"
+          echo "Downloading: $BUN_URL"
+          curl -L -o /tmp/bun.zip "$BUN_URL"
+          unzip -o /tmp/bun.zip -d /tmp/bun-extract
+          BUN_BIN=$(find /tmp/bun-extract -name "bun" -type f | head -1)
+          cp "$BUN_BIN" bun-termux/runtime/bun
+          chmod +x bun-termux/runtime/bun
+          echo "✅ Bun binary downloaded"
+
+      - name: Build Bun PACMAN package
+        run: |
+          export BUN_RUNTIME="$(pwd)/bun-termux/runtime/bun"
+          
+          pkgdir="/tmp/pkgbuild/pkg"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/lib/bun"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/bin"
+          
+          cp "$BUN_RUNTIME" "$pkgdir/data/data/com.termux/files/usr/lib/bun/bun"
+          chmod 755 "$pkgdir/data/data/com.termux/files/usr/lib/bun/bun"
+          
+          cat > "$pkgdir/data/data/com.termux/files/usr/bin/bun" << 'LAUNCHER'
+          #!/data/data/com.termux/files/usr/bin/bash
+          set -euo pipefail
+          PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+          BUN_BIN="$PREFIX/lib/bun/bun"
+          if [[ ! -x "$BUN_BIN" ]]; then
+              echo "Error: Bun runtime not found at $BUN_BIN" >&2
+              exit 1
+          fi
+          exec grun "$BUN_BIN" "$@"
+          LAUNCHER
+          chmod 755 "$pkgdir/data/data/com.termux/files/usr/bin/bun"
+          
+          cat > "$pkgdir/.PKGINFO" << EOF
+          pkgname = bun
+          pkgver = ${{ env.BUN_VERSION }}-${{ env.PKGREL }}
+          pkgdesc = Bun runtime for Termux (glibc-runner wrapper)
+          url = https://github.com/oven-sh/bun
+          builddate = $(date +%s)
+          packager = GitHub Actions
+          size = $(du -sk "$pkgdir" | cut -f1)
+          arch = aarch64
+          license = MIT
+          depend = glibc-runner
+          depend = bash
+          depend = ncurses
+          EOF
+          
+          mkdir -p packages
+          tar -cJf packages/bun-termux_${{ env.BUN_VERSION }}-${{ env.PKGREL }}_aarch64.pkg.tar.xz -C "$pkgdir" .
+          
+          ls -lh packages/*.pkg.tar.xz
+
+      - name: Upload Bun PACMAN artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bun-termux-pacman-${{ env.ARCHITECTURE }}
+          path: packages/*.pkg.tar.xz
+          retention-days: 30
+
+  # ============================================
+  # OPENCODE PACKAGES
+  # ============================================
+  build-opencode-deb:
+    needs: build-bun-deb
+    if: ${{ github.event.inputs.package_format == 'deb' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/termux/package-builder:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          apt-get update || true
+          apt-get install -y curl rsync dpkg-dev || true
           uname -a
 
       - name: Download OpenCode binary
@@ -124,17 +219,15 @@ jobs:
           mkdir -p opencode-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/bin
           mkdir -p opencode-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/lib/opencode/runtime
           
-          # Download OpenCode for arm64
           OPENCODE_URL="https://github.com/anomalyco/opencode/releases/download/v${{ env.OPENCODE_VERSION }}/opencode-linux-arm64.tar.gz"
+          echo "Downloading: $OPENCODE_URL"
           curl -L -o /tmp/opencode.tar.gz "$OPENCODE_URL"
           tar -xzf /tmp/opencode.tar.gz -C /tmp/
           
-          # Find and copy the binary
           OPENCODE_BIN=$(find /tmp -name "opencode" -type f -executable | head -1)
           cp "$OPENCODE_BIN" opencode-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/lib/opencode/runtime/opencode
           chmod +x opencode-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/lib/opencode/runtime/opencode
           
-          # Create wrapper script
           cat > opencode-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/bin/opencode << 'EOF'
           #!/data/data/com.termux/files/usr/bin/bash
           set -euo pipefail
@@ -160,26 +253,119 @@ jobs:
           EOF
           chmod +x opencode-termux/artifacts/staged/prefix/data/data/com.termux/files/usr/bin/opencode
           
-          echo "OpenCode binary downloaded and staged"
+          echo "✅ OpenCode binary downloaded and staged"
 
       - name: Build OpenCode DEB package
         run: |
           mkdir -p packages
           ARCHITECTURE=${{ env.ARCHITECTURE }} bash scripts/package/package_deb.sh opencode opencode-termux ${{ env.OPENCODE_VERSION }} ${{ env.ARCHITECTURE }}
           chmod 755 packages/opencode-termux/DEBIAN || true
-          dpkg-deb --build packages/opencode-termux packages/opencode-termux_${{ env.OPENCODE_VERSION }}_${{ env.ARCHITECTURE }}.deb || true
-          ls -la packages/*.deb || echo "Package build completed"
+          dpkg-deb --build packages/opencode-termux packages/opencode-termux_${{ env.OPENCODE_VERSION }}_${{ env.ARCHITECTURE }}.deb
+          ls -lh packages/*.deb
 
-      - name: Upload OpenCode artifact
+      - name: Upload OpenCode DEB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: opencode-termux-${{ env.ARCHITECTURE }}
+          name: opencode-termux-deb-${{ env.ARCHITECTURE }}
           path: packages/*.deb
           retention-days: 30
 
-  # Release job (only on tag push)
+  build-opencode-pacman:
+    needs: build-bun-pacman
+    if: ${{ github.event.inputs.package_format == 'pacman' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/termux/package-builder:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          apt-get update || true
+          apt-get install -y curl rsync xz-utils || true
+          uname -a
+
+      - name: Download OpenCode binary
+        run: |
+          mkdir -p opencode-termux/runtime
+          OPENCODE_URL="https://github.com/anomalyco/opencode/releases/download/v${{ env.OPENCODE_VERSION }}/opencode-linux-arm64.tar.gz"
+          echo "Downloading: $OPENCODE_URL"
+          curl -L -o /tmp/opencode.tar.gz "$OPENCODE_URL"
+          tar -xzf /tmp/opencode.tar.gz -C /tmp/
+          OPENCODE_BIN=$(find /tmp -name "opencode" -type f -executable | head -1)
+          cp "$OPENCODE_BIN" opencode-termux/runtime/opencode
+          chmod +x opencode-termux/runtime/opencode
+          echo "✅ OpenCode binary downloaded"
+
+      - name: Build OpenCode PACMAN package
+        run: |
+          export OPENCODE_RUNTIME="$(pwd)/opencode-termux/runtime/opencode"
+          
+          pkgdir="/tmp/pkgbuild/pkg"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/lib/opencode/runtime"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/bin"
+          
+          cp "$OPENCODE_RUNTIME" "$pkgdir/data/data/com.termux/files/usr/lib/opencode/runtime/opencode"
+          chmod 755 "$pkgdir/data/data/com.termux/files/usr/lib/opencode/runtime/opencode"
+          
+          cat > "$pkgdir/data/data/com.termux/files/usr/bin/opencode" << 'LAUNCHER'
+          #!/data/data/com.termux/files/usr/bin/bash
+          set -euo pipefail
+          SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          OPENCODE_RUNTIME="$SELF_DIR/../lib/opencode/runtime/opencode"
+          
+          cleanup_state_locks() {
+            local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/opencode"
+            [[ -d "$state_dir" ]] && find "$state_dir" -maxdepth 1 -type f -name '*.lock' -delete 2>/dev/null || true
+          }
+          
+          cleanup_tty() {
+            [[ -t 1 ]] && printf '\033[?1049l\033[?25h\033[0m' >/dev/tty 2>/dev/null || true
+          }
+          
+          trap cleanup_tty EXIT INT TERM HUP QUIT
+          cleanup_state_locks
+          
+          : "${OPENCODE_DISABLE_DEFAULT_PLUGINS:=1}"
+          export OPENCODE_DISABLE_DEFAULT_PLUGINS
+          
+          exec "$OPENCODE_RUNTIME" "$@"
+          LAUNCHER
+          chmod 755 "$pkgdir/data/data/com.termux/files/usr/bin/opencode"
+          
+          cat > "$pkgdir/.PKGINFO" << EOF
+          pkgname = opencode
+          pkgver = ${{ env.OPENCODE_VERSION }}-${{ env.PKGREL }}
+          pkgdesc = Open source coding agent for Termux with TTY+lock cleanup
+          url = https://github.com/anomalyco/opencode
+          builddate = $(date +%s)
+          packager = GitHub Actions
+          size = $(du -sk "$pkgdir" | cut -f1)
+          arch = aarch64
+          license = MIT
+          depend = bash
+          depend = ncurses
+          depend = bun
+          EOF
+          
+          mkdir -p packages
+          tar -cJf packages/opencode-termux_${{ env.OPENCODE_VERSION }}-${{ env.PKGREL }}_aarch64.pkg.tar.xz -C "$pkgdir" .
+          
+          ls -lh packages/*.pkg.tar.xz
+
+      - name: Upload OpenCode PACMAN artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-termux-pacman-${{ env.ARCHITECTURE }}
+          path: packages/*.pkg.tar.xz
+          retention-days: 30
+
+  # ============================================
+  # RELEASE (only on tag push)
+  # ============================================
   release:
-    needs: [build-bun, build-opencode]
+    needs: [build-bun-deb, build-bun-pacman, build-opencode-deb, build-opencode-pacman]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -188,20 +374,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Bun artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: bun-termux-aarch64
-          path: dist/
-
-      - name: Download OpenCode artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: opencode-termux-aarch64
           path: dist/
 
       - name: List artifacts
-        run: ls -la dist/
+        run: find dist/ -type f -ls
 
       - name: Create Release
         uses: softprops/action-gh-release@v1

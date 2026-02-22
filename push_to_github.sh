@@ -52,7 +52,7 @@ fi
 
 echo ""
 echo "=== Next Steps ==="
-echo "1. Test on arm64 apt machine (192.168.101.28):"
+echo "1. Test on arm64 apt machine (192.168.101.70):"
 echo "   git clone $GITHUB_REPO"
 echo "   cd termux-packaging"
 echo "   ./setup.sh"

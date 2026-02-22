@@ -108,7 +108,7 @@ cd ~/develop
 
 ## Emergency Contacts
 - Primary development machine: localhost:8022
-- Test machine 1 (arm64): 192.168.101.28:8022
+  - Test machine 1 (arm64): 192.168.101.70:8022
 - Test machine 2 (arm32): 192.168.101.38:8022
 EOF
 

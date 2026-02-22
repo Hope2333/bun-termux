@@ -1,0 +1,7 @@
+Package: bun
+Version: ${BUN_VERSION}
+Architecture: ${ARCHITECTURE}
+Maintainer: termux-bun-local
+Section: utils
+Priority: optional
+Description: Bun runtime for Termux (glibc-runner wrapper)

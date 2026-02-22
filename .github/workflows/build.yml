@@ -1,0 +1,230 @@
+# GitHub Actions Workflow: Build Bun for Termux
+#
+# Builds DEB and PACMAN packages for Bun on Termux
+# Supports: aarch64 (arm64) only - armv7 requires source build
+
+name: Build Bun Termux
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'packaging/**'
+      - 'scripts/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      bun_version:
+        description: 'Bun version (e.g., 1.2.20)'
+        required: false
+        default: '1.2.20'
+      package_format:
+        description: 'Package format'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - deb
+          - pacman
+
+env:
+  BUN_VERSION: ${{ github.event.inputs.bun_version || '1.2.20' }}
+  PACKAGE_FORMAT: ${{ github.event.inputs.package_format || 'both' }}
+  PKGREL: '1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/termux/package-builder:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          apt-get update || true
+          apt-get install -y curl unzip rsync dpkg-dev xz-utils || true
+          uname -a
+
+      - name: Download Bun binary
+        run: |
+          mkdir -p artifacts/staged/prefix/data/data/com.termux/files/usr/bin
+          mkdir -p artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux
+          mkdir -p runtime
+          
+          BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${{ env.BUN_VERSION }}/bun-linux-aarch64.zip"
+          echo "Downloading: $BUN_URL"
+          curl -L -o /tmp/bun.zip "$BUN_URL"
+          unzip -o /tmp/bun.zip -d /tmp/bun-extract
+          
+          BUN_BIN=$(find /tmp/bun-extract -name "bun" -type f | head -1)
+          cp "$BUN_BIN" artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux/bun
+          cp "$BUN_BIN" runtime/bun
+          chmod +x artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux/bun
+          chmod +x runtime/bun
+          
+          cat > artifacts/staged/prefix/data/data/com.termux/files/usr/bin/bun << 'EOF'
+          #!/data/data/com.termux/files/usr/bin/bash
+          set -euo pipefail
+          PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+          exec grun "$PREFIX/lib/bun-termux/bun" "$@"
+          EOF
+          chmod +x artifacts/staged/prefix/data/data/com.termux/files/usr/bin/bun
+          echo "Bun binary downloaded"
+
+      - name: Build DEB package
+        if: ${{ github.event.inputs.package_format == 'deb' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
+        run: |
+          mkdir -p packages
+          
+          pkgdir="packages/bun-termux"
+          rm -rf "$pkgdir"
+          mkdir -p "$pkgdir/DEBIAN"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/bin"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/lib/bun-termux"
+          
+          cp -a artifacts/staged/prefix/data/data/com.termux/files/usr/bin/bun "$pkgdir/data/data/com.termux/files/usr/bin/"
+          cp -a artifacts/staged/prefix/data/data/com.termux/files/usr/lib/bun-termux/bun "$pkgdir/data/data/com.termux/files/usr/lib/bun-termux/"
+          
+          cat > "$pkgdir/DEBIAN/control" << EOF
+          Package: bun
+          Version: ${{ env.BUN_VERSION }}
+          Architecture: aarch64
+          Maintainer: Hope2333
+          Section: utils
+          Priority: optional
+          Description: Bun runtime for Termux (glibc-runner wrapper)
+          Depends: glibc-runner, bash, ncurses
+          EOF
+          
+          INSTALLED_SIZE=$(du -sk "$pkgdir" | cut -f1)
+          echo "Installed-Size: $INSTALLED_SIZE" >> "$pkgdir/DEBIAN/control"
+          
+          cat > "$pkgdir/DEBIAN/postinst" << 'EOF'
+          #!/bin/bash
+          echo "Bun for Termux installed!"
+          echo "Usage: bun --version"
+          EOF
+          chmod 755 "$pkgdir/DEBIAN/postinst"
+          chmod 755 "$pkgdir/DEBIAN"
+          
+          dpkg-deb --build "$pkgdir" packages/bun-termux_${{ env.BUN_VERSION }}_aarch64.deb
+          ls -lh packages/*.deb
+
+      - name: Build PACMAN package
+        if: ${{ github.event.inputs.package_format == 'pacman' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
+        run: |
+          mkdir -p packages
+          
+          pkgdir="/tmp/pkgbuild/pkg"
+          rm -rf "$pkgdir"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/lib/bun"
+          mkdir -p "$pkgdir/data/data/com.termux/files/usr/bin"
+          
+          cp runtime/bun "$pkgdir/data/data/com.termux/files/usr/lib/bun/bun"
+          chmod 755 "$pkgdir/data/data/com.termux/files/usr/lib/bun/bun"
+          
+          cat > "$pkgdir/data/data/com.termux/files/usr/bin/bun" << 'EOF'
+          #!/data/data/com.termux/files/usr/bin/bash
+          set -euo pipefail
+          PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+          exec grun "$PREFIX/lib/bun/bun" "$@"
+          EOF
+          chmod 755 "$pkgdir/data/data/com.termux/files/usr/bin/bun"
+          
+          cat > "$pkgdir/.PKGINFO" << EOF
+          pkgname = bun
+          pkgver = ${{ env.BUN_VERSION }}-${{ env.PKGREL }}
+          pkgdesc = Bun runtime for Termux (glibc-runner wrapper)
+          url = https://github.com/oven-sh/bun
+          builddate = $(date +%s)
+          packager = Hope2333
+          size = $(du -sk "$pkgdir" | cut -f1)
+          arch = aarch64
+          license = MIT
+          depend = glibc-runner
+          depend = bash
+          depend = ncurses
+          EOF
+          
+          tar -cJf packages/bun-termux_${{ env.BUN_VERSION }}-${{ env.PKGREL }}_aarch64.pkg.tar.xz -C "$pkgdir" .
+          ls -lh packages/*.pkg.tar.xz
+
+      - name: Upload DEB artifact
+        if: ${{ github.event.inputs.package_format == 'deb' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bun-termux-deb-aarch64
+          path: packages/*.deb
+          retention-days: 30
+
+      - name: Upload PACMAN artifact
+        if: ${{ github.event.inputs.package_format == 'pacman' || github.event.inputs.package_format == 'both' || github.event.inputs.package_format == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bun-termux-pacman-aarch64
+          path: packages/*.pkg.tar.xz
+          retention-days: 30
+
+  # ARM32 research job - documents current limitations
+  check-armv7:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Bun armv7 availability
+        run: |
+          echo "Checking Bun armv7 binary availability..."
+          
+          BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${{ env.BUN_VERSION }}/bun-linux-armv7.zip"
+          HTTP_CODE=$(curl -sI "$BUN_URL" 2>/dev/null | head -1 | awk '{print $2}')
+          
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "Bun armv7 binary is available!"
+            echo "URL: $BUN_URL"
+          else
+            echo "Bun armv7 binary NOT available (HTTP $HTTP_CODE)"
+            echo ""
+            echo "Available architectures from oven-sh/bun:"
+            curl -s "https://api.github.com/repos/oven-sh/bun/releases/latest" | grep -o '"name": "bun-linux-[^"]*"' | head -10
+            echo ""
+            echo "ARM32 Build Options:"
+            echo "1. Build from source with Zig (experimental)"
+            echo "2. Use QEMU user-mode emulation"
+            echo "3. Wait for upstream support"
+          fi
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download DEB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bun-termux-deb-aarch64
+          path: dist/
+        continue-on-error: true
+
+      - name: Download PACMAN artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bun-termux-pacman-aarch64
+          path: dist/
+        continue-on-error: true
+
+      - name: List artifacts
+        run: ls -la dist/ || echo "No artifacts"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/**/*
+          generate_release_notes: true

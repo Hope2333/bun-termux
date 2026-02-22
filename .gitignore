@@ -8,6 +8,7 @@ artifacts/
 packages/
 *.deb
 *.pkg.tar.*
+termux-packaging.bundle
 
 # Runtime binaries
 bun-termux/runtime/

@@ -83,6 +83,7 @@ log "Staged dir: $STAGED_DIR"
 
 rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR/DEBIAN"
+chmod 755 "$PACKAGE_DIR/DEBIAN"
 
 # Copy staged files
 log "Copying staged files..."

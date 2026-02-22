@@ -8,3 +8,4 @@ packages/
 # Large files (downloaded by CI)
 *.tar.gz
 *.zip
+packaging/dpkg/work/

@@ -1,0 +1,42 @@
+# GitHub Actions Workflow: Test OML
+#
+# Runs on every push/PR to verify the toolchain
+
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './solve-android'
+          format: tty
+
+      - name: Check Makefile syntax
+        run: |
+          make -n help || true
+
+  test-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test OML script
+        run: |
+          chmod +x oml
+          ./oml help || true
+
+      - name: Verify directory structure
+        run: |
+          ls -la solve-android/opencode/packaging/pacman/
+          ls -la solve-android/bun/packaging/pacman/

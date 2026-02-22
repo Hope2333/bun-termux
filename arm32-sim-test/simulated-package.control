@@ -1,0 +1,11 @@
+Package: bun-termux-arm32-test
+Version: 1.3.9
+Architecture: armv7l
+Maintainer: termux-test
+Description: Bun for Termux (ARM32 simulated test)
+
+Package: opencode-termux-arm32-test
+Version: 1.1.65
+Architecture: armv7l
+Maintainer: termux-test
+Description: OpenCode for Termux (ARM32 simulated test)

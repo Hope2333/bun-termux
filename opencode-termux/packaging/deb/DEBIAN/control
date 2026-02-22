@@ -1,0 +1,7 @@
+Package: opencode
+Version: ${OPENCODE_VERSION}
+Architecture: ${ARCHITECTURE}
+Maintainer: termux-opencode-local
+Section: utils
+Priority: optional
+Description: Open source coding agent for Termux with TTY+lock cleanup

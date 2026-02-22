@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+#
+# Oh-My-Litecode (OML) - Unified Toolchain Manager
+# Version: 0.1.0-alpha
+# License: MIT
+#
+# Usage: oml <command> [options]
+#
+
+set -euo pipefail
+
+OML_VERSION="0.1.0-alpha"
+OML_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OML_TOOLS="$OML_ROOT/tools"
+OML_HOTFIX="$OML_ROOT/hotfix"
+OML_DOCS="$OML_ROOT/docs"
+OML_SOLVE_ANDROID="$OML_ROOT/solve-android"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Load available tools
+_load_tools() {
+    for tool in "$OML_TOOLS"/*.sh; do
+        [[ -f "$tool" ]] && source "$tool"
+    done
+}
+
+# Show help
+_show_help() {
+    cat <<EOF
+Oh-My-Litecode (OML) v${OML_VERSION}
+Unified Toolchain Manager for Termux/Android AI Development
+
+Usage: oml <command> [options]
+
+Commands:
+  build       Build packages for Termux
+    --ver <version>    Target version (e.g., 1.1.65)
+    --pkgmgr <type>    Package manager: pacman or dpkg
+    --project <name>   Project: opencode or bun
+    --debug            Build debug package (includes sources)
+
+  hotfix      Manage hotfixes
+    list               List available hotfixes
+    apply <name>       Apply a hotfix
+    create <name>      Create new hotfix template
+
+  doc         View documentation
+    <project>          Project name (opencode, bun, oml)
+    <topic>            Topic (optional)
+
+  version     Show version info
+  help        Show this help
+
+Examples:
+  oml build --ver 1.1.65 --pkgmgr pacman --project opencode
+  oml hotfix list
+  oml doc opencode installation
+
+Projects:
+  opencode    OpenCode for Termux with TTY/lock cleanup launcher
+  bun         Bun runtime for Termux (glibc-runner wrapper)
+
+EOF
+}
+
+# Build command
+_cmd_build() {
+    local ver=""
+    local pkgmgr="pacman"
+    local project=""
+    local debug=false
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --ver) ver="$2"; shift 2 ;;
+            --pkgmgr) pkgmgr="$2"; shift 2 ;;
+            --project) project="$2"; shift 2 ;;
+            --debug) debug=true; shift ;;
+            *) shift ;;
+        esac
+    done
+
+    if [[ -z "$project" ]]; then
+        echo -e "${RED}Error: --project is required (opencode or bun)${NC}"
+        return 1
+    fi
+
+    if [[ -z "$ver" ]]; then
+        echo -e "${RED}Error: --ver is required${NC}"
+        return 1
+    fi
+
+    local project_dir="$OML_SOLVE_ANDROID/$project"
+    local packaging_dir="$project_dir/packaging/$pkgmgr"
+
+    if [[ ! -d "$packaging_dir" ]]; then
+        echo -e "${RED}Error: Package manager '$pkgmgr' not supported for $project${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}Building $project v$ver for $pkgmgr...${NC}"
+
+    # Invoke Makefile
+    make -C "$project_dir" build \
+        VER="$ver" \
+        PKGMGR="$pkgmgr" \
+        DEBUG="$debug"
+
+    echo -e "${GREEN}Build complete.${NC}"
+}
+
+# Hotfix command
+_cmd_hotfix() {
+    local action="${1:-list}"
+
+    case $action in
+        list)
+            echo -e "${BLUE}Available hotfixes:${NC}"
+            for fix in "$OML_HOTFIX"/*.sh; do
+                [[ -f "$fix" ]] && echo "  - $(basename "$fix" .sh)"
+            done
+            ;;
+        apply)
+            local name="$2"
+            if [[ -z "$name" ]]; then
+                echo -e "${RED}Error: hotfix name required${NC}"
+                return 1
+            fi
+            local fix="$OML_HOTFIX/${name}.sh"
+            if [[ ! -f "$fix" ]]; then
+                echo -e "${RED}Error: hotfix '$name' not found${NC}"
+                return 1
+            fi
+            echo -e "${BLUE}Applying hotfix: $name${NC}"
+            source "$fix"
+            ;;
+        create)
+            local name="$2"
+            if [[ -z "$name" ]]; then
+                echo -e "${RED}Error: hotfix name required${NC}"
+                return 1
+            fi
+            cat > "$OML_HOTFIX/${name}.sh" <<'TEMPLATE'
+#!/usr/bin/env bash
+# Hotfix: <description>
+# Created: $(date +%Y-%m-%d)
+# Applies to: <project(s)>
+
+set -euo pipefail
+
+echo "Applying hotfix: <name>"
+# Add fix logic here
+TEMPLATE
+            chmod +x "$OML_HOTFIX/${name}.sh"
+            echo -e "${GREEN}Created hotfix template: $name${NC}"
+            ;;
+        *)
+            echo -e "${RED}Unknown hotfix action: $action${NC}"
+            return 1
+            ;;
+    esac
+}
+
+# Doc command
+_cmd_doc() {
+    local project="${1:-oml}"
+    local topic="${2:-README}"
+
+    local doc_file="$OML_DOCS/${project}/${topic}.md"
+
+    if [[ -f "$doc_file" ]]; then
+        ${PAGER:-less} "$doc_file"
+    else
+        echo -e "${YELLOW}Documentation not found: $doc_file${NC}"
+        echo -e "${BLUE}Available docs for $project:${NC}"
+        find "$OML_DOCS/$project" -name "*.md" 2>/dev/null | head -20 || echo "  (none)"
+    fi
+}
+
+# Version command
+_cmd_version() {
+    echo "Oh-My-Litecode v${OML_VERSION}"
+    echo ""
+    echo "Sub-projects:"
+    for proj in "$OML_SOLVE_ANDROID"/*; do
+        [[ -d "$proj" ]] && echo "  - $(basename "$proj")"
+    done
+}
+
+# Main entry point
+main() {
+    _load_tools
+
+    local cmd="${1:-help}"
+    shift || true
+
+    case $cmd in
+        build)   _cmd_build "$@" ;;
+        hotfix)  _cmd_hotfix "$@" ;;
+        doc)     _cmd_doc "$@" ;;
+        version|--version|-v) _cmd_version ;;
+        help|--help|-h) _show_help ;;
+        *)
+            echo -e "${RED}Unknown command: $cmd${NC}"
+            _show_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

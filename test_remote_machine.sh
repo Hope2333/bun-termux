@@ -7,7 +7,19 @@ set -euo pipefail
 IP="${1:-192.168.101.28}"
 PORT="${2:-8022}"
 GITHUB_REPO="${3:-}"
-SSH_USER="u0_a450"  # Default Termux user
+
+# Determine SSH user based on IP
+case "$IP" in
+    "192.168.101.28")
+        SSH_USER="u0_a240"  # arm64 test machine
+        ;;
+    "192.168.101.38")
+        SSH_USER="u0_a177"  # arm32 test machine
+        ;;
+    *)
+        SSH_USER="u0_a450"  # Default Termux user
+        ;;
+esac
 
 if [[ -z "$GITHUB_REPO" ]]; then
     echo "Usage: $0 <ip> <port> <github-repo>"

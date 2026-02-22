@@ -11,14 +11,15 @@ DEVELOP_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PACKAGE_TYPE="${1:-}"
 PACKAGE_NAME="${2:-}"
 VERSION="${3:-1.0.0}"
-ARCHITECTURE="${4:-arm64}"
+ARCHITECTURE="${4:-${ARCHITECTURE:-arm64}}"  # Use environment variable or default
 
 if [[ -z "$PACKAGE_TYPE" ]] || [[ -z "$PACKAGE_NAME" ]]; then
     echo "Usage: $0 <package_type> <package_name> [version] [architecture]"
     echo "  package_type: bun or opencode"
     echo "  package_name: output package name"
     echo "  version: package version (default: 1.0.0)"
-    echo "  architecture: arm64 (default) or other"
+    echo "  architecture: architecture from env or arm64 (default)"
+    echo "               Set ARCHITECTURE environment variable for different arch"
     exit 1
 fi
 
@@ -90,6 +91,13 @@ cp -a "$STAGED_DIR/." "$PACKAGE_DIR/"
 # Update control file with version and architecture
 log "Creating control file..."
 cp "$CONTROL_FILE" "$PACKAGE_DIR/DEBIAN/"
+
+# Replace variables in control file
+sed -i "s/\${BUN_VERSION}/$VERSION/g" "$PACKAGE_DIR/DEBIAN/control"
+sed -i "s/\${OPENCODE_VERSION}/$VERSION/g" "$PACKAGE_DIR/DEBIAN/control"
+sed -i "s/\${ARCHITECTURE}/$ARCHITECTURE/g" "$PACKAGE_DIR/DEBIAN/control"
+
+# Fallback for hardcoded versions (if variables not used)
 sed -i "s/Version: .*/Version: $VERSION/" "$PACKAGE_DIR/DEBIAN/control"
 sed -i "s/Architecture: .*/Architecture: $ARCHITECTURE/" "$PACKAGE_DIR/DEBIAN/control"
 

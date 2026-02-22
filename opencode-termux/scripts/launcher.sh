@@ -1,0 +1,54 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OPENCODE_CLI="$SELF_DIR/../lib/opencode/packages/opencode/bin/opencode"
+OPENCODE_RUNTIME="$SELF_DIR/../lib/opencode/runtime/opencode"
+
+cleanup_tty() {
+	if [ -t 1 ]; then
+		printf '\033[?1049l\033[?25h\033[0m' >/dev/tty 2>/dev/null || true
+	fi
+	command -v stty >/dev/null 2>&1 && stty sane 2>/dev/null || true
+	command -v tput >/dev/null 2>&1 && tput rmcup >/dev/null 2>&1 || true
+}
+
+cleanup_state_locks() {
+	local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/opencode"
+	if [ -d "$state_dir" ]; then
+		find "$state_dir" -maxdepth 1 -type f -name '*.lock' -delete 2>/dev/null || true
+	fi
+}
+
+cleanup_broken_cached_modules() {
+	local cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/opencode"
+	local mod_dir="$cache_root/node_modules/opencode-anthropic-auth"
+	if [ -d "$mod_dir" ] && [ ! -f "$mod_dir/package.json" ]; then
+		rm -rf "$cache_root/node_modules" 2>/dev/null || true
+	fi
+}
+
+ensure_stdio_tty() {
+	if [ -t 0 ] && [ -t 1 ] && [ -w /dev/tty ]; then
+		exec </dev/tty >/dev/tty 2>/dev/tty
+	fi
+}
+
+trap cleanup_tty EXIT INT TERM HUP QUIT
+ensure_stdio_tty
+cleanup_state_locks
+cleanup_broken_cached_modules
+: "${OPENCODE_DISABLE_DEFAULT_PLUGINS:=1}"
+export OPENCODE_DISABLE_DEFAULT_PLUGINS
+
+if [[ -x "$OPENCODE_RUNTIME" ]]; then
+	"$OPENCODE_RUNTIME" "$@"
+	rc=$?
+	cleanup_tty
+	exit $rc
+fi
+
+"$OPENCODE_CLI" "$@"
+rc=$?
+cleanup_tty
+exit $rc

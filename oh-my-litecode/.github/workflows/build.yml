@@ -1,0 +1,115 @@
+# GitHub Actions Workflow: Build OML Packages
+#
+# Triggers:
+#   - Push to main/master
+#   - Pull requests
+#   - Manual dispatch with version override
+#
+# Outputs:
+#   - opencode-termux-{ver}-{rel}.pacman.tar.xz
+#   - bun-termux-{ver}-{rel}.pacman.tar.xz
+
+name: Build Packages
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'solve-android/**'
+      - 'Makefile'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Target version (e.g., 1.1.65)'
+        required: false
+        default: ''
+      package_manager:
+        description: 'Package manager'
+        required: true
+        default: 'pacman'
+        type: choice
+        options:
+          - pacman
+          - dpkg
+
+env:
+  PKGMGR: ${{ github.event.inputs.package_manager || 'pacman' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/termux/package-builder:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        run: |
+          echo "Build environment ready"
+          uname -a
+
+      - name: Install dependencies
+        run: |
+          apt-get update || true
+          apt-get install -y rsync || true
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VER="${{ github.event.inputs.version }}"
+          else
+            # Extract from PKGBUILD
+            VER=$(grep '^pkgver=' solve-android/opencode/packaging/pacman/PKGBUILD | cut -d= -f2)
+          fi
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "Building version: $VER"
+
+      - name: Build OpenCode package
+        run: |
+          make build-project PROJECT=opencode VER=${{ steps.version.outputs.version }} PKGMGR=${{ env.PKGMGR }}
+        continue-on-error: true
+
+      - name: Build Bun package
+        run: |
+          make build-project PROJECT=bun VER=${{ steps.version.outputs.version }} PKGMGR=${{ env.PKGMGR }}
+        continue-on-error: true
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          find solve-android -name "*.pkg.*" -exec cp {} dist/ \; 2>/dev/null || true
+          ls -la dist/ || echo "No artifacts found"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: oml-packages-${{ env.PKGMGR }}
+          path: dist/
+          retention-days: 30
+
+  # Release job (only on tag push)
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/**/*
+          generate_release_notes: true

@@ -1,0 +1,23 @@
+# Build artifacts
+dist/
+.build/
+.tmp/
+*.pkg.tar.*
+*.deb
+
+# Runtime files
+*.log
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sources (not included in repo)
+sources/

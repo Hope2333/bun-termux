@@ -1,0 +1,82 @@
+# PKGBUILD for Bun on Termux
+# Package: bun-termux
+# Version: 1.2.20
+# License: MIT
+
+pkgname=bun-termux
+pkgver=1.2.20
+pkgrel=1
+pkgdesc='Bun runtime for Termux (glibc-runner wrapper)'
+arch=('aarch64')
+url='https://github.com/kaan-escober/bun-termux-loader'
+license=('MIT')
+options=('!strip' '!debug')
+depends=('glibc-runner' 'bash' 'ncurses')
+makedepends=()
+optdepends=('oh-my-litecode: hotfix and upgrade support')
+source=()
+sha256sums=()
+
+# For local builds
+_runtime="${BUN_RUNTIME:-${PWD}/../../runtime/bun-termux}"
+
+prepare() {
+    msg "Preparing Bun runtime..."
+}
+
+build() {
+    msg "Building Bun wrapper..."
+    
+    local prefix="${pkgdir}/data/data/com.termux/files/usr"
+    mkdir -p "$prefix/lib/bun-termux"
+    mkdir -p "$prefix/bin"
+    
+    # Copy runtime if available
+    if [ -f "$_runtime" ]; then
+        msg2 "Installing runtime from $_runtime"
+        install -m755 "$_runtime" "$prefix/lib/bun-termux/bun"
+    else
+        msg2 "Runtime not found at $_runtime"
+        msg2 "Please download bun-termux-loader or set BUN_RUNTIME"
+    fi
+    
+    # Create wrapper script
+    cat > "$prefix/bin/bun" <<'WRAPPER'
+#!/usr/bin/env bash
+# Bun for Termux Wrapper
+# Part of Oh-My-Litecode project
+
+set -euo pipefail
+
+PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+BUN_BIN="$PREFIX/lib/bun-termux/bun"
+
+if [[ ! -x "$BUN_BIN" ]]; then
+    echo "Error: Bun runtime not found at $BUN_BIN"
+    echo "Please ensure bun-termux package is properly installed."
+    exit 1
+fi
+
+# Use glibc-runner (grun) to execute the glibc binary
+exec grun "$BUN_BIN" "$@"
+WRAPPER
+    chmod 755 "$prefix/bin/bun"
+}
+
+package() {
+    msg "Packaging Bun..."
+    true
+}
+
+post_install() {
+    echo ""
+    echo "Bun for Termux installed successfully!"
+    echo ""
+    echo "Usage:"
+    echo "  bun --version      - Show version"
+    echo "  bun run <file>     - Run a script"
+    echo "  bun install        - Install dependencies"
+    echo ""
+    echo "Note: This uses glibc-runner (grun) to run the glibc binary."
+    echo ""
+}

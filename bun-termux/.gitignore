@@ -1,0 +1,16 @@
+# Build artifacts
+.build/
+dist/
+*.pkg.tar.*
+*.deb
+
+# Runtime (not included in repo)
+runtime/*.bin
+runtime/bun
+
+# Editor
+*.swp
+.vscode/
+
+# OS
+.DS_Store

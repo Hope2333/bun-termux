@@ -1,0 +1,34 @@
+# Build artifacts
+dist/
+.build/
+.tmp/
+*.pkg.tar.*
+*.deb
+
+# Runtime files
+*.log
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.key
+*.pem
+credentials.json
+
+# Node (if any)
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

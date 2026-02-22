@@ -12,14 +12,14 @@ This document outlines the complete testing process for verifying the packaging 
 - **Risk**: If broken, no mature OMO available
 
 ### 2. Test Machine 1 (arm64 apt)
-- **Address**: 192.168.101.70:8022
+- **Address**: 10.31.66.45:8022
 - **Package Manager**: termux-apt
 - **Architecture**: arm64 (aarch64)
 - **Status**: New environment
 - **Purpose**: Test apt-based packaging
 
 ### 3. Test Machine 2 (arm32 apt)
-- **Address**: 192.168.101.38:8022
+- **Address**: 10.31.66.76:8022
 - **Package Manager**: termux-apt
 - **Architecture**: arm32 (armv7l)
 - **Status**: Mature environment
@@ -44,7 +44,7 @@ This document outlines the complete testing process for verifying the packaging 
 ```bash
 # From local machine, test remote
 cd /data/data/com.termux/files/home/develop
-./test_remote_machine.sh 192.168.101.70 8022 https://github.com/yourusername/termux-packaging.git
+./test_remote_machine.sh 10.31.66.45 8022 https://github.com/yourusername/termux-packaging.git
 ```
 
 **Expected Results:**
@@ -58,7 +58,7 @@ cd /data/data/com.termux/files/home/develop
 ```bash
 # From local machine, test remote
 cd /data/data/com.termux/files/home/develop
-./test_remote_machine.sh 192.168.101.38 8022 https://github.com/yourusername/termux-packaging.git
+./test_remote_machine.sh 10.31.66.76 8022 https://github.com/yourusername/termux-packaging.git
 ```
 
 **Expected Results:**
@@ -73,7 +73,7 @@ cd /data/data/com.termux/files/home/develop
 #### On Test Machine 1 (arm64):
 ```bash
 # SSH into machine
-ssh -p 8022 u0_a240@192.168.101.70
+ssh -p 8022 u0_a240@10.31.66.45
 
 # Clone and test
 git clone https://github.com/yourusername/termux-packaging.git
@@ -94,7 +94,7 @@ source .config/termux-packaging.conf
 #### On Test Machine 2 (arm32):
 ```bash
 # SSH into machine
-ssh -p 8022 u0_a450@192.168.101.38
+ssh -p 8022 u0_a450@10.31.66.76
 
 # Clone and test
 git clone https://github.com/yourusername/termux-packaging.git

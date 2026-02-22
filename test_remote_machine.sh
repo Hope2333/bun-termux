@@ -4,16 +4,16 @@ set -euo pipefail
 # Script to test packaging on remote machines
 # Usage: ./test_remote_machine.sh <ip> <port> <github-repo>
 
-IP="${1:-192.168.101.70}"
+IP="${1:-10.31.66.45}"
 PORT="${2:-8022}"
 GITHUB_REPO="${3:-}"
 
 # Determine SSH user based on IP
 case "$IP" in
-    "192.168.101.70")
+    "10.31.66.45")
         SSH_USER="u0_a240"  # arm64 test machine
         ;;
-    "192.168.101.38")
+    "10.31.66.76")
         SSH_USER="u0_a177"  # arm32 test machine
         ;;
     *)
@@ -23,7 +23,7 @@ esac
 
 if [[ -z "$GITHUB_REPO" ]]; then
     echo "Usage: $0 <ip> <port> <github-repo>"
-    echo "Example: $0 192.168.101.70 8022 https://github.com/yourusername/termux-packaging.git"
+    echo "Example: $0 10.31.66.45 8022 https://github.com/yourusername/termux-packaging.git"
     exit 1
 fi
 

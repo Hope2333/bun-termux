@@ -33,20 +33,20 @@ cd /data/data/com.termux/files/home/develop
 ./push_to_github.sh https://github.com/您的用户名/termux-packaging.git
 ```
 
-### 步骤2: 测试arm64机器 (192.168.101.70:8022)
+### 步骤2: 测试arm64机器 (10.31.66.45:8022)
 ```bash
 cd /data/data/com.termux/files/home/develop
 
 # 使用实际URL
-./test_remote_machine.sh 192.168.101.70 8022 https://github.com/您的用户名/termux-packaging.git
+./test_remote_machine.sh 10.31.66.45 8022 https://github.com/您的用户名/termux-packaging.git
 ```
 
-### 步骤3: 测试arm32机器 (192.168.101.38:8022)
+### 步骤3: 测试arm32机器 (10.31.66.76:8022)
 ```bash
 cd /data/data/com.termux/files/home/develop
 
 # 使用实际URL
-./test_remote_machine.sh 192.168.101.38 8022 https://github.com/您的用户名/termux-packaging.git
+./test_remote_machine.sh 10.31.66.76 8022 https://github.com/您的用户名/termux-packaging.git
 ```
 
 ### 步骤4: 手动验证（如果自动测试失败）
@@ -54,7 +54,7 @@ cd /data/data/com.termux/files/home/develop
 #### 在arm64测试机上手动操作：
 ```bash
 # SSH连接到测试机
-ssh -p 8022 u0_a240@192.168.101.70
+ssh -p 8022 u0_a240@10.31.66.45
 
 # 克隆仓库
 git clone https://github.com/您的用户名/termux-packaging.git
@@ -77,7 +77,7 @@ source .config/termux-packaging.conf
 #### 在arm32测试机上手动操作：
 ```bash
 # SSH连接到测试机
-ssh -p 8022 u0_a450@192.168.101.38
+ssh -p 8022 u0_a450@10.31.66.76
 
 # 克隆仓库
 git clone https://github.com/您的用户名/termux-packaging.git

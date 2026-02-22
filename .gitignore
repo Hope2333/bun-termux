@@ -3,7 +3,7 @@
 .config/*.backup
 
 # Build artifacts
-build/
+/build/
 artifacts/
 packages/
 *.deb

@@ -29,8 +29,8 @@ develop/
 
 1. **Clone this repository**:
    ```bash
-   git clone https://github.com/yourusername/termux-packaging.git
-   cd termux-packaging
+   git clone https://github.com/Hope2333/bun-termux.git
+   cd bun-termux
    ```
 
 2. **Setup configuration**:

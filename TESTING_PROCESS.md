@@ -37,14 +37,14 @@ This document outlines the complete testing process for verifying the packaging 
 2. **Push local repository to GitHub**
    ```bash
    cd /data/data/com.termux/files/home/develop
-   ./push_to_github.sh https://github.com/yourusername/termux-packaging.git
+   ./push_to_github.sh https://github.com/Hope2333/bun-termux.git
    ```
 
 ### Phase 2: Test Machine 1 (arm64 apt) Verification
 ```bash
 # From local machine, test remote
 cd /data/data/com.termux/files/home/develop
-./test_remote_machine.sh 10.31.66.45 8022 https://github.com/yourusername/termux-packaging.git
+./test_remote_machine.sh 10.31.66.45 8022 https://github.com/Hope2333/bun-termux.git
 ```
 
 **Expected Results:**
@@ -58,7 +58,7 @@ cd /data/data/com.termux/files/home/develop
 ```bash
 # From local machine, test remote
 cd /data/data/com.termux/files/home/develop
-./test_remote_machine.sh 10.31.66.76 8022 https://github.com/yourusername/termux-packaging.git
+./test_remote_machine.sh 10.31.66.76 8022 https://github.com/Hope2333/bun-termux.git
 ```
 
 **Expected Results:**
@@ -76,8 +76,8 @@ cd /data/data/com.termux/files/home/develop
 ssh -p 8022 u0_a240@10.31.66.45
 
 # Clone and test
-git clone https://github.com/yourusername/termux-packaging.git
-cd termux-packaging
+git clone https://github.com/Hope2333/bun-termux.git
+cd bun-termux
 ./setup.sh
 
 # Edit configuration
@@ -97,8 +97,8 @@ source .config/termux-packaging.conf
 ssh -p 8022 u0_a450@10.31.66.76
 
 # Clone and test
-git clone https://github.com/yourusername/termux-packaging.git
-cd termux-packaging
+git clone https://github.com/Hope2333/bun-termux.git
+cd bun-termux
 ./setup.sh
 
 # Edit configuration
@@ -202,7 +202,7 @@ If testing reveals critical issues:
 
 - **Primary Developer**: Local development machine
 - **Test Coordinator**: Responsible for test execution
-- **GitHub Repository**: https://github.com/yourusername/termux-packaging
+- **GitHub Repository**: https://github.com/Hope2333/bun-termux
 
 ## Revision History
 

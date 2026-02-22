@@ -20,7 +20,7 @@
 ### 2. 获取仓库URL
 创建后获得URL，格式为：
 ```
-https://github.com/您的用户名/termux-packaging.git
+https://github.com/Hope2333/bun-termux.git
 ```
 
 ## 测试步骤
@@ -30,7 +30,7 @@ https://github.com/您的用户名/termux-packaging.git
 cd /data/data/com.termux/files/home/develop
 
 # 使用实际URL替换<your-repo-url>
-./push_to_github.sh https://github.com/您的用户名/termux-packaging.git
+./push_to_github.sh https://github.com/Hope2333/bun-termux.git
 ```
 
 ### 步骤2: 测试arm64机器 (10.31.66.45:8022)
@@ -38,7 +38,7 @@ cd /data/data/com.termux/files/home/develop
 cd /data/data/com.termux/files/home/develop
 
 # 使用实际URL
-./test_remote_machine.sh 10.31.66.45 8022 https://github.com/您的用户名/termux-packaging.git
+./test_remote_machine.sh 10.31.66.45 8022 https://github.com/Hope2333/bun-termux.git
 ```
 
 ### 步骤3: 测试arm32机器 (10.31.66.76:8022)
@@ -46,7 +46,7 @@ cd /data/data/com.termux/files/home/develop
 cd /data/data/com.termux/files/home/develop
 
 # 使用实际URL
-./test_remote_machine.sh 10.31.66.76 8022 https://github.com/您的用户名/termux-packaging.git
+./test_remote_machine.sh 10.31.66.76 8022 https://github.com/Hope2333/bun-termux.git
 ```
 
 ### 步骤4: 手动验证（如果自动测试失败）
@@ -57,8 +57,8 @@ cd /data/data/com.termux/files/home/develop
 ssh -p 8022 u0_a240@10.31.66.45
 
 # 克隆仓库
-git clone https://github.com/您的用户名/termux-packaging.git
-cd termux-packaging
+git clone https://github.com/Hope2333/bun-termux.git
+cd bun-termux
 
 # 运行设置
 ./setup.sh
@@ -80,8 +80,8 @@ source .config/termux-packaging.conf
 ssh -p 8022 u0_a450@10.31.66.76
 
 # 克隆仓库
-git clone https://github.com/您的用户名/termux-packaging.git
-cd termux-packaging
+git clone https://github.com/Hope2333/bun-termux.git
+cd bun-termux
 
 # 运行设置
 ./setup.sh

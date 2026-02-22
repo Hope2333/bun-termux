@@ -8,7 +8,7 @@ GITHUB_REPO="${1:-}"
 
 if [[ -z "$GITHUB_REPO" ]]; then
     echo "Usage: $0 <github-repo-url>"
-    echo "Example: $0 https://github.com/yourusername/termux-packaging.git"
+    echo "Example: $0 https://github.com/Hope2333/bun-termux.git"
     exit 1
 fi
 

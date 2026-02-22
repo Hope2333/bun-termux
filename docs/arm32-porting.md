@@ -26,8 +26,8 @@ This document describes how to test and verify the packaging system on ARM32 (32
 
 #### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/termux-packaging.git
-cd termux-packaging
+git clone https://github.com/Hope2333/bun-termux.git
+cd bun-termux
 ```
 
 #### 2. Configure for ARM32

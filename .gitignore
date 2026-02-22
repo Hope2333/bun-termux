@@ -1,0 +1,41 @@
+# Sensitive configuration
+.config/termux-packaging.conf
+.config/*.backup
+
+# Build artifacts
+build/
+artifacts/
+packages/
+*.deb
+*.pkg.tar.*
+
+# Runtime binaries
+bun-termux/runtime/
+opencode-termux/runtime/
+
+# Source code (should be cloned separately)
+bun-termux/sources/
+opencode-termux/sources/
+
+# Temporary files
+*.tmp
+*.log
+*.cache
+
+# Backup files
+*.backup
+*.old
+
+# Test directories
+test-*/
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git submodules (if any)
+.gitmodules

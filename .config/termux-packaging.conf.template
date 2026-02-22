@@ -1,0 +1,39 @@
+# Configuration template for Termux packaging
+# Rename to termux-packaging.conf and fill in your local paths
+
+# Base directories (override these for your environment)
+TERMUX_PREFIX="/data/data/com.termux/files/usr"
+DEVELOP_ROOT="/path/to/your/develop"
+
+# Build directories
+BUILD_DIR="$DEVELOP_ROOT/build"
+ARTIFACTS_DIR="$DEVELOP_ROOT/artifacts"
+PACKAGES_DIR="$DEVELOP_ROOT/packages"
+
+# Source directories (where to find source code)
+BUN_SOURCE="$DEVELOP_ROOT/bun-termux/sources/bun"
+OPENCODE_SOURCE="$DEVELOP_ROOT/opencode-termux/sources/opencode"
+
+# Runtime binaries (pre-built or placeholder)
+BUN_RUNTIME="$DEVELOP_ROOT/bun-termux/runtime/bun"
+OPENCODE_RUNTIME="$DEVELOP_ROOT/opencode-termux/runtime/opencode"
+
+# Package versions
+BUN_VERSION="1.3.9"
+OPENCODE_VERSION="1.1.65"
+
+# Architecture (arm64 or armv7l for arm32)
+ARCHITECTURE="arm64"
+
+# Build flags
+ENABLE_DEBUG="false"
+CREATE_PLACEHOLDERS="true"
+
+# Environment variables for build scripts
+export PREFIX="$TERMUX_PREFIX"
+export BUN_SOURCE="$BUN_SOURCE"
+export OPENCODE_SOURCE="$OPENCODE_SOURCE"
+export BUN_RUNTIME="$BUN_RUNTIME"
+export OPENCODE_RUNTIME="$OPENCODE_RUNTIME"
+export BUILD_DIR="$BUILD_DIR"
+export ARTIFACTS_DIR="$ARTIFACTS_DIR"

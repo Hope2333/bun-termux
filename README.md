@@ -55,4 +55,5 @@ MIT License
 
 - Workflow: `.github/workflows/armv7.yml`
 - Guide: `docs/armv7-migration.md`
+- Native runner setup: `docs/armv7-native-runner-setup.md`
 - Cross-first, native-fallback strategy is tracked via status artifacts (`next-build-path.json`).

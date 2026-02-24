@@ -50,3 +50,9 @@ make build PKGVER=1.3.9 PKGMGR=pacman
 ## License
 
 MIT License
+
+## ARMv7 Migration
+
+- Workflow: `.github/workflows/armv7.yml`
+- Guide: `docs/armv7-migration.md`
+- Cross-first, native-fallback strategy is tracked via status artifacts (`next-build-path.json`).

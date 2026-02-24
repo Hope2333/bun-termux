@@ -1,7 +1,8 @@
 Package: bun
 Version: ${BUN_VERSION}
 Architecture: ${ARCHITECTURE}
-Maintainer: termux-bun-local
+Maintainer: Hope2333(幽零小喵) <u0catmiao@proton.me>
 Section: utils
 Priority: optional
 Description: Bun runtime for Termux (glibc-runner wrapper)
+Depends: glibc-runner, bash, ncurses

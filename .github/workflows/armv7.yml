@@ -19,6 +19,57 @@ on:
       - 'docs/armv7-**'
 
 jobs:
+  detect-native-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      native_available: ${{ steps.detect.outputs.native_available }}
+      matched_runner: ${{ steps.detect.outputs.matched_runner }}
+    steps:
+      - name: Detect available self-hosted armv7 runner
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          repo = os.environ['REPO']
+          runners = json.loads(
+              subprocess.check_output(
+                  ['gh', 'api', f'repos/{repo}/actions/runners'],
+                  text=True,
+              )
+          ).get('runners', [])
+
+          def has_labels(r, wanted):
+              labels = {x.get('name') for x in r.get('labels', [])}
+              return wanted.issubset(labels)
+
+          wanted = {'self-hosted', 'linux', 'armv7'}
+          matched = [
+              r for r in runners
+              if r.get('status') == 'online' and (not r.get('busy')) and has_labels(r, wanted)
+          ]
+
+          native_available = 'true' if matched else 'false'
+          matched_runner = matched[0].get('name', '') if matched else ''
+
+          github_output = os.environ['GITHUB_OUTPUT']
+          with open(github_output, 'a', encoding='utf-8') as f:
+              f.write(f'native_available={native_available}\n')
+              f.write(f'matched_runner={matched_runner}\n')
+
+          print(json.dumps({
+              'native_available': native_available,
+              'matched_runner': matched_runner,
+              'matched_count': len(matched),
+          }))
+          PY
+
   armv7-cross-prebuild:
     runs-on: ubuntu-latest
     steps:
@@ -159,7 +210,8 @@ jobs:
           retention-days: 30
 
   armv7-native-fallback:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_native_armv7 == 'true' }}
+    needs: [detect-native-runner, armv7-cross-prebuild]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_native_armv7 == 'true' && needs.detect-native-runner.outputs.native_available == 'true' }}
     runs-on: [self-hosted, linux, armv7]
     steps:
       - uses: actions/checkout@v4

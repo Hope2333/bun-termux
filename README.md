@@ -1,22 +1,19 @@
 # Bun for Termux
 
-[![Build](https://github.com/Hope2333/bun-termux/actions/workflows/build.yml/badge.svg)](https://github.com/Hope2333/bun-termux/actions)
+Native Android Bun runtime packaged for Termux. No glibc, no wrapper, no grun.
 
-Bun runtime for Termux/Android using glibc-runner.
+Starting from Bun v1.3.14, official Android builds are available as
+Bionic-linked PIE executables that run directly on Termux via
+`/system/bin/linker64` — zero extra dependencies.
 
 ## Installation
 
-### Prerequisites
-
 ```bash
-pacman -Syu
-pacman -S glibc-runner
-```
+# pacman
+pacman -U bun-1.3.14-1-aarch64.pkg.tar.xz
 
-### Install
-
-```bash
-pacman -U bun-1.3.9-1-aarch64.pkg.tar.xz
+# apt/deb  
+dpkg -i bun_1.3.14_aarch64.deb
 ```
 
 ## Usage
@@ -27,28 +24,36 @@ bun run script.ts
 bun install
 ```
 
-## How It Works
+## Architecture
 
 ```
-/usr/bin/bun (wrapper)
-    └── exec grun /usr/lib/bun-termux/bun "$@"
-            └── glibc-runner executes glibc binary
+/usr/bin/bun → Android-native Bun binary (Bionic-linked)
+               interpreter: /system/bin/linker64
+               No glibc, no grun, no wrapper
 ```
+
+Supported architectures: `aarch64`, `x86_64`
 
 ## Building
 
 ```bash
-make build PKGVER=1.3.9 PKGMGR=pacman
+make PKGVER=1.3.14 PKGMGR=pacman
 ```
 
-## Related Projects
+## How it works
 
-- [oh-my-litecode](https://github.com/Hope2333/oh-my-litecode) - Parent project
-- [opencode-termux](https://github.com/Hope2333/opencode-termux) - Depends on this
-- [bun-termux-loader](https://github.com/kaan-escober/bun-termux-loader) - Loader mechanism
+Bun v1.3.14+ ships official Android builds. This repo downloads the
+appropriate zip from GitHub releases, extracts the binary, and packages
+it for Termux's package managers.
+
+## Related
+
+- [opencode-termux](https://github.com/Hope2333/opencode-termux) — OpenCode for Termux
+- [oven-sh/bun](https://github.com/oven-sh/bun) — Upstream Bun
 
 ## License
 
+<<<<<<< HEAD
 MIT License
 
 ## ARMv7 Migration
@@ -57,3 +62,6 @@ MIT License
 - Guide: `docs/armv7-migration.md`
 - Native runner setup: `docs/armv7-native-runner-setup.md`
 - Cross-first, native-fallback strategy is tracked via status artifacts (`next-build-path.json`).
+=======
+MIT
+>>>>>>> 7c854a8 (docs: update for native Android Bun (v1.3.14+))

@@ -3,7 +3,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-PKGVER ?= 1.3.9
+PKGVER ?= 1.3.14
 PKGREL ?= 1
 DEBUG ?= false
 PKGMGR ?= pacman
